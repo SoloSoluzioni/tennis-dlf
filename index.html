@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tennis DLF Cuneo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--tx:#1a1d23;--mu:#6b7280;--br:#d8dce3;--ac:#1f6f43;--rosso:#c62828;--arancio:#c77700;--verde:#2e7d32}
+  @media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--tx:#e8eaee;--mu:#9aa3b0;--br:#323843;--ac:#4caf7a;--rosso:#ef5350;--arancio:#ffb74d;--verde:#81c784}}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--ac);color:#fff}
+  header h1{font-size:18px;margin:0}
+  header button{background:transparent;border:1px solid #fff8;color:#fff;border-radius:6px;padding:6px 10px}
+  main{max-width:900px;margin:0 auto;padding:16px}
+  nav{display:flex;gap:6px;margin-bottom:16px}
+  nav button{flex:1;padding:10px 6px;border:1px solid var(--br);background:var(--card);color:var(--tx);border-radius:8px;font-size:15px}
+  nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+  .card{background:var(--card);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:12px}
+  input,select{width:100%;padding:10px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-size:16px}
+  .riga{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .riga>*{flex:1;min-width:130px}
+  label{font-size:13px;color:var(--mu)}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--br);vertical-align:top}
+  th{font-size:13px;color:var(--mu)}
+  .ok{color:var(--verde);font-weight:600}.sc{color:var(--arancio);font-weight:600}.ko{color:var(--rosso);font-weight:600}
+  .mu{color:var(--mu);font-size:14px}
+  .btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 14px;font-size:16px;width:100%}
+  a{color:var(--ac)}
+  .err{color:var(--rosso);margin-top:8px}
+  .hide{display:none}
+  #login{max-width:360px;margin:60px auto}
+  .chip{display:inline-block;background:var(--bg);border:1px solid var(--br);border-radius:12px;padding:1px 8px;margin:2px 2px 0 0;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ===== CONFIGURAZIONE: incolla qui i due valori di Supabase ===== -->
+<script>
+  const SUPABASE_URL = "https://pojdkxrbbawtsridrzxh.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_EebOC02Vd1ij28XRESKWtA_ju9yVSuE";
+</script>
+
+<div id="login" class="card">
+  <h2 style="margin-top:0">Tennis DLF Cuneo</h2>
+  <div class="riga"><div><label>Utente (email)</label><input id="u" type="email" autocomplete="username"></div></div>
+  <div class="riga"><div><label>Password</label><input id="p" type="password" autocomplete="current-password"></div></div>
+  <button class="btn" id="entra">Entra</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div id="app" class="hide">
+  <header><h1>Tennis DLF Cuneo</h1><button id="esci">Esci</button></header>
+  <main>
+    <nav>
+      <button data-t="t1" class="on">Anagrafica</button>
+      <button data-t="t2">Cerca slot</button>
+      <button data-t="t3">Elenco</button>
+    </nav>
+
+    <section id="t1">
+      <div class="card"><label>Cerca per nome e/o cognome</label><input id="q1" placeholder="es. rossi mario" autocomplete="off"></div>
+      <div id="r1"></div>
+    </section>
+
+    <section id="t2" class="hide">
+      <div class="card">
+        <div class="riga">
+          <div><label>Campo</label><select id="campo"><option>Centrale</option><option>Benevelli</option></select></div>
+          <div><label>Giorno</label><select id="giorno"></select></div>
+          <div><label>Orario</label><select id="ora"></select></div>
+        </div>
+      </div>
+      <div id="r2"></div>
+    </section>
+
+    <section id="t3" class="hide">
+      <div class="card">
+        <div class="riga">
+          <div><label>Cerca</label><input id="q3" placeholder="cognome o nome" autocomplete="off"></div>
+          <div><label>Filtro slot</label>
+            <select id="f3"><option value="tutti">Tutti</option><option value="con">Solo con slot</option><option value="senza">Solo senza slot</option></select></div>
+        </div>
+        <div class="mu" id="cnt3"></div>
+      </div>
+      <div class="card" style="overflow-x:auto"><table><thead><tr><th>Cognome Nome</th><th>Slot</th><th>Certificato</th></tr></thead><tbody id="r3"></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const GIORNI = ["", "Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let SOCI = [];
+
+function fmtData(d){ if(!d) return "—"; const [y,m,g]=d.split("-"); return `${g}/${m}/${y}`; }
+function statoCert(d){
+  if(!d) return {cls:"ko", txt:"Mancante"};
+  const oggi = new Date(); oggi.setHours(0,0,0,0);
+  const giorni = Math.round((new Date(d+"T00:00:00") - oggi) / 86400000);
+  if(giorni < 0) return {cls:"ko", txt:`${fmtData(d)} (scaduto)`};
+  if(giorni <= 30) return {cls:"sc", txt:`${fmtData(d)} (tra ${giorni} gg)`};
+  return {cls:"ok", txt:fmtData(d)};
+}
+const certHtml = s => { const c = statoCert(s.scadenza_cert); return `<span class="${c.cls}">${esc(c.txt)}</span>`; };
+const slotLabel = x => `${x.campo[0]}: ${GIORNI[x.giorno].slice(0,3)} ${x.ora}-${x.ora+1}`;
+const ordina = (a,b) => (a.cognome+a.nome).localeCompare(b.cognome+b.nome, "it");
+
+async function carica(){
+  const { data, error } = await sb.from("soci").select("*, slot(*)").order("cognome").limit(2000);
+  if(error){ alert("Errore nel caricamento: " + error.message); return; }
+  SOCI = data;
+  inizializza();
+}
+
+function inizializza(){
+  $("giorno").innerHTML = GIORNI.slice(1).map((g,i)=>`<option value="${i+1}">${g}</option>`).join("");
+  $("ora").innerHTML = Array.from({length:15},(_,i)=>i+8).map(h=>`<option value="${h}">${h}-${h+1}</option>`).join("");
+  ["campo","giorno","ora"].forEach(id => $(id).onchange = cercaSlot);
+  $("q1").oninput = cercaAnagrafica; $("q3").oninput = elenco; $("f3").onchange = elenco;
+  cercaAnagrafica(); cercaSlot(); elenco();
+}
+
+// 1) Anagrafica
+function cercaAnagrafica(){
+  const parole = norm($("q1").value).split(/\s+/).filter(Boolean);
+  if(!parole.length){ $("r1").innerHTML = '<div class="mu">Scrivi almeno una parte del nome o del cognome.</div>'; return; }
+  const trovati = SOCI.filter(s => { const t = norm(s.cognome+" "+(s.nome||"")); return parole.every(p => t.includes(p)); }).sort(ordina).slice(0,30);
+  if(!trovati.length){ $("r1").innerHTML = '<div class="mu">Nessun risultato.</div>'; return; }
+  $("r1").innerHTML = trovati.map(s => {
+    const slot = [...s.slot].sort((a,b)=>a.giorno-b.giorno||a.ora-b.ora).map(x=>`<span class="chip">${esc(slotLabel(x))}</span>`).join("") || '<span class="mu">nessuno</span>';
+    const cert = s.cert_url ? ` — <a href="${esc(s.cert_url)}" target="_blank" rel="noopener">apri certificato</a>` : "";
+    return `<div class="card"><b>${esc(s.cognome)} ${esc(s.nome)}</b><br>
+      Certificato: ${certHtml(s)}${cert}<br>
+      Slot: ${slot}<br>
+      <span class="mu">Tel: ${s.telefono ? `<a href="tel:${esc(s.telefono)}">${esc(s.telefono)}</a>` : "—"} · Email: ${s.email ? `<a href="mailto:${esc(s.email)}">${esc(s.email)}</a>` : "—"}<br>
+      Tessera DLF: ${esc(s.tessera_dlf || "—")} (rinnovo ${fmtData(s.rinnovo_dlf)}) · FITP: ${esc(s.tessera_fitp || "—")} (${fmtData(s.scadenza_fitp)})</span></div>`;
+  }).join("");
+}
+
+// 2) Slot
+function cercaSlot(){
+  const campo = $("campo").value, g = +$("giorno").value, h = +$("ora").value;
+  const membri = SOCI.filter(s => s.slot.some(x => x.campo===campo && x.giorno===g && x.ora===h)).sort(ordina);
+  const titolo = `<div class="card"><b>${esc(campo)} — ${GIORNI[g]} ${h}-${h+1}</b> · ${membri.length} component${membri.length===1?"e":"i"}</div>`;
+  if(!membri.length){ $("r2").innerHTML = titolo; return; }
+  $("r2").innerHTML = titolo + `<div class="card" style="overflow-x:auto"><table><thead><tr><th>Componente</th><th>Scadenza certificato</th></tr></thead><tbody>` +
+    membri.map(s => `<tr><td>${esc(s.cognome)} ${esc(s.nome)}${s.cert_url?` <a href="${esc(s.cert_url)}" target="_blank" rel="noopener">📄</a>`:""}</td><td>${certHtml(s)}</td></tr>`).join("") + `</tbody></table></div>`;
+}
+
+// 3) Elenco
+function elenco(){
+  const parole = norm($("q3").value).split(/\s+/).filter(Boolean), f = $("f3").value;
+  const lista = SOCI.filter(s => {
+    const t = norm(s.cognome+" "+(s.nome||""));
+    if(!parole.every(p => t.includes(p))) return false;
+    return f==="con" ? s.slot.length>0 : f==="senza" ? s.slot.length===0 : true;
+  }).sort(ordina);
+  $("cnt3").textContent = `${lista.length} soci`;
+  $("r3").innerHTML = lista.map(s => {
+    const slot = [...s.slot].sort((a,b)=>a.giorno-b.giorno||a.ora-b.ora).map(x=>`<span class="chip">${esc(slotLabel(x))}</span>`).join("") || "—";
+    return `<tr><td>${esc(s.cognome)} ${esc(s.nome)}</td><td>${slot}</td><td>${certHtml(s)}</td></tr>`;
+  }).join("");
+}
+
+// Navigazione
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x===b));
+  ["t1","t2","t3"].forEach(t => $(t).classList.toggle("hide", t!==b.dataset.t));
+});
+
+// Login / logout
+let loggato = false;
+async function mostra(sessione){
+  if(!!sessione === loggato) return;
+  loggato = !!sessione;
+  $("login").classList.toggle("hide", !!sessione);
+  $("app").classList.toggle("hide", !sessione);
+  if(sessione) await carica(); else SOCI = [];
+}
+$("entra").onclick = async () => {
+  $("loginErr").textContent = "";
+  const { error } = await sb.auth.signInWithPassword({ email: $("u").value.trim(), password: $("p").value });
+  if(error) $("loginErr").textContent = "Accesso non riuscito: " + error.message;
+};
+$("p").onkeydown = e => { if(e.key==="Enter") $("entra").click(); };
+$("esci").onclick = () => sb.auth.signOut();
+sb.auth.onAuthStateChange((_ev, s) => mostra(s));
+sb.auth.getSession().then(({data}) => mostra(data.session));
+</script>
+</body>
+</html>
