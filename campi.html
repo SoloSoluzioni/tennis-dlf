@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Tennis DLF Cuneo Campi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: barra titolo + tab (Centrale / Benevelli / Certificati); griglia oraria 7 giorni x fasce; tabella certificati ordinata per scadenza */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --fg:#1b2623; --muted:#5d6b67; --line:#d9e0dd; --line-soft:#e8edeb;
+  --accent:#1f5d50; --accent-fg:#ffffff; --head:#e6ecea; --today:#fff6d6;
+  --red-bg:#fbe1de; --red-fg:#8c1a11; --org-bg:#fde6cc; --org-fg:#80390a;
+  --amb-bg:#faf0b8; --amb-fg:#614a00; --blu-bg:#d9eaf8; --blu-fg:#0f4670;
+  --grn-bg:#dff0e2; --grn-fg:#1b5428; --neu-bg:#e8edeb; --neu-fg:#44514d;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif; --f-body:"Barlow",system-ui,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#19221f; --fg:#e6ece9; --muted:#9aaaa4; --line:#2b3733; --line-soft:#222d29;
+  --accent:#5fc2a9; --accent-fg:#0b1512; --head:#202b27; --today:#3a3414;
+  --red-bg:#4a1f1b; --red-fg:#ffb4ab; --org-bg:#4a2e14; --org-fg:#ffc891;
+  --amb-bg:#443a10; --amb-fg:#f5df7a; --blu-bg:#17344a; --blu-fg:#a8d4f5;
+  --grn-bg:#1b3a24; --grn-fg:#a6e0b3; --neu-bg:#222d29; --neu-fg:#b4c2bd; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#19221f; --fg:#e6ece9; --muted:#9aaaa4; --line:#2b3733; --line-soft:#222d29;
+  --accent:#5fc2a9; --accent-fg:#0b1512; --head:#202b27; --today:#3a3414;
+  --red-bg:#4a1f1b; --red-fg:#ffb4ab; --org-bg:#4a2e14; --org-fg:#ffc891;
+  --amb-bg:#443a10; --amb-fg:#f5df7a; --blu-bg:#17344a; --blu-fg:#a8d4f5;
+  --grn-bg:#1b3a24; --grn-fg:#a6e0b3; --neu-bg:#222d29; --neu-fg:#b4c2bd; color-scheme:dark}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 var(--f-body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1760px;margin:0 auto;min-width:0}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:16px}
+h1{font:600 34px/1 var(--f-display);letter-spacing:.01em;margin:0;text-transform:uppercase}
+.sub{color:var(--muted);margin-top:6px;font-size:14px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+input[type=search]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;width:260px}
+input[type=search]:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:14px;cursor:pointer}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}
+nav button{font:600 20px/1 var(--f-display);text-transform:uppercase;letter-spacing:.04em;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 18px 9px;cursor:pointer}
+nav button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+nav button .n{font:500 14px var(--f-body);color:var(--muted);margin-left:6px;letter-spacing:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;color:var(--muted);font-size:13px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1240px;table-layout:fixed}
+.grid th,.grid td{border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);vertical-align:top;padding:6px 8px;text-align:left}
+.grid thead th{position:sticky;top:0;z-index:2;background:var(--head);font:600 18px/1 var(--f-display);text-transform:uppercase;letter-spacing:.05em;padding:10px 8px}
+.grid thead th.today{background:var(--today)}
+.grid thead th small{display:block;font:500 11px var(--f-body);letter-spacing:.04em;color:var(--muted);margin-top:3px;text-transform:none}
+.grid .hr{width:76px;white-space:nowrap;background:var(--head);font:600 20px/1 var(--f-display);color:var(--fg);position:sticky;left:0;z-index:1;padding-top:9px}
+.grid thead th.hr{z-index:3}
+.grid td.today{background:color-mix(in srgb,var(--today) 40%,var(--surface))}
+.grid td:last-child,.grid th:last-child{border-right:0}
+.grid tr:last-child>*{border-bottom:0}
+.m{padding:4px 0;border-bottom:1px dashed var(--line-soft)}
+.m:last-child{border-bottom:0}
+.m .nm{font-weight:500;font-size:14px;line-height:1.2;overflow-wrap:anywhere}
+.m.dim{opacity:.28}
+.m.hit .nm{background:var(--amb-bg);color:var(--amb-fg);border-radius:3px;padding:0 3px;margin:0 -3px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.chip{font:500 12px/1 var(--f-body);font-variant-numeric:tabular-nums;border-radius:4px;padding:3px 6px;white-space:nowrap}
+.chip.mut{background:var(--neu-bg);color:var(--neu-fg)}
+.empty{color:var(--line);text-align:center}
+.s-red{background:var(--red-bg);color:var(--red-fg)}.s-org{background:var(--org-bg);color:var(--org-fg)}
+.s-amb{background:var(--amb-bg);color:var(--amb-fg)}.s-blu{background:var(--blu-bg);color:var(--blu-fg)}
+.s-grn{background:var(--grn-bg);color:var(--grn-fg)}.s-neu{background:var(--neu-bg);color:var(--neu-fg)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.card{font:inherit;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:12px 14px;cursor:pointer;display:grid;gap:4px}
+.card[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card .k{font-size:13px;color:var(--muted)}
+.card .v{font:600 34px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.card .tag{justify-self:start;font:500 12px var(--f-body);border-radius:4px;padding:2px 7px}
+table.cert{border-collapse:collapse;width:100%;min-width:900px}
+.cert th{position:sticky;top:0;background:var(--head);text-align:left;font:600 15px var(--f-display);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;z-index:1}
+.cert td{padding:8px 12px;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+.cert td.nm{font-weight:500}
+.cert td.slot{color:var(--muted);font-size:13px}
+.cert .pill{display:inline-block;white-space:nowrap;border-radius:4px;padding:3px 8px;font-size:13px;font-weight:500}
+.cert td.num{text-align:right}
+.cert th.num{text-align:right}
+.cert td.idx{color:var(--muted);width:48px}
+.st{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);max-width:640px}
+.st .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.st.ok .dot{background:var(--grn-fg)}.st.warn .dot{background:var(--amb-fg)}.st.off .dot{background:var(--red-fg)}
+.st button{font:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.s-mis{background:var(--red-bg);color:var(--red-fg)}
+.foot{margin-top:16px;color:var(--muted);font-size:13px}
+.none{padding:28px;text-align:center;color:var(--muted)}
+[role=tabpanel]{min-width:0}
+@media (prefers-reduced-motion:no-preference){.card,nav button{transition:border-color .15s,color .15s}}
+@media (max-width:700px){input[type=search]{width:100%}h1{font-size:28px}}
+.hide{display:none!important}
+#login{max-width:380px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:8px}
+#login h2{font:600 28px/1 var(--f-display);text-transform:uppercase;margin:0}
+#login input{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 12px}
+#login label{font-size:13px;color:var(--muted);margin-top:6px}
+.btn{margin-top:10px;font:600 16px var(--f-body);background:var(--accent);color:var(--accent-fg);border:0;border-radius:6px;padding:10px 14px;cursor:pointer}
+.err{color:var(--red-fg);font-size:14px;min-height:1.2em}
+.mu{color:var(--muted);font-size:14px;margin:0}
+button.out{font:inherit;font-size:14px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="login" class="card">
+  <h2>Tennis DLF Cuneo</h2>
+  <p class="mu">Consultazione campi e certificati medici. Accesso in sola lettura.</p>
+  <label for="u">Utente (email)</label><input id="u" type="email" autocomplete="username">
+  <label for="p">Password</label><input id="p" type="password" autocomplete="current-password">
+  <button class="btn" id="entra" type="button">Entra</button>
+  <div class="err" id="loginErr" role="alert"></div>
+</div>
+
+<div class="wrap hide" id="app">
+<header>
+  <div>
+    <h1>ASD Tennis DLF Cuneo</h1>
+    <div class="sub" id="sub"></div>
+    <div class="st" id="st" role="status" aria-live="polite" style="margin-top:6px"></div>
+  </div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Cerca un socio" aria-label="Cerca un socio" autocomplete="off">
+    <button id="esci" type="button" class="out">Esci</button>
+    <label class="chk" id="xwrap"><input type="checkbox" id="xt"> Mostra tessere DLF e FITP</label>
+  </div>
+</header>
+
+<nav role="tablist" aria-label="Sezioni">
+  <button role="tab" id="t-centrale" aria-selected="true" aria-controls="p-centrale" data-t="centrale">Campo Centrale</button>
+  <button role="tab" id="t-benevelli" aria-selected="false" aria-controls="p-benevelli" data-t="benevelli">Campo Benevelli</button>
+  <button role="tab" id="t-certificati" aria-selected="false" aria-controls="p-certificati" data-t="certificati">Certificati medici<span class="n" id="ncert"></span></button>
+</nav>
+
+<section role="tabpanel" id="p-centrale" aria-labelledby="t-centrale"></section>
+<section role="tabpanel" id="p-benevelli" aria-labelledby="t-benevelli" hidden></section>
+<section role="tabpanel" id="p-certificati" aria-labelledby="t-certificati" hidden></section>
+
+<div class="foot">Pagina di sola lettura. I dati vengono letti dal database online dell’ASD (soci e slot), lo stesso che l’Excel sincronizza con la macro SB_SincronizzaOnline. Orario settimanale tipo della stagione invernale 2026/2027. In ogni fascia: certificato medico (M), rinnovo tessera DLF (D), scadenza tessera FITP (F).</div>
+</div>
+
+<script>
+const DAYS=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+const $=s=>document.querySelector(s);
+const MS=864e5;
+let today,todayIdx;
+function setToday(){today=new Date();today.setHours(0,0,0,0);todayIdx=(today.getDay()+6)%7}
+setToday();
+const DRE=/^\d{4}-\d\d-\d\d$/;
+const dv=v=>typeof v==="string"&&DRE.test(v.slice(0,10))?v.slice(0,10):null;
+function pd(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function fd(s){const[y,m,d]=s.split("-");return d+"/"+m+"/"+y.slice(2)}
+function fdl(s){const[y,m,d]=s.split("-");return d+"/"+m+"/"+y}
+function st(s){
+  if(!s)return{k:"mis",l:"Mancante",d:null,o:-1};
+  if(+s.slice(0,4)>=9000)return{k:"neu",l:"Senza scadenza",d:null,o:5};
+  const d=Math.round((pd(s)-today)/MS);
+  if(d<0)return{k:"red",l:"Scaduto",d,o:0};
+  if(d<=5)return{k:"org",l:"Scade entro 5 giorni",d,o:1};
+  if(d<=15)return{k:"amb",l:"Scade tra 6 e 15 giorni",d,o:2};
+  if(d<=30)return{k:"blu",l:"Scade tra 16 e 30 giorni",d,o:3};
+  return{k:"grn",l:"Valido",d,o:4};
+}
+const KEYS=[["mis","Mancanti"],["red","Scaduti"],["org","Entro 5 giorni"],["amb","6–15 giorni"],["blu","16–30 giorni"],["grn","Oltre 30 giorni"],["neu","Senza scadenza"]];
+const TAGS={mis:"da richiedere",red:"da rinnovare",org:"urgente",amb:"in scadenza",blu:"da avvisare",grn:"in regola",neu:"nessun limite"};
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+const norm=t=>t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+
+/* ---- dati: righe normalizzate {k,campo,g,o,n,c,d,f} ---- */
+let rows=[];
+let model=build(rows);
+function build(rows){
+  const m={Centrale:{},Benevelli:{}},mem=new Map();
+  for(const r of rows){
+    const h=r.o+"-"+(r.o+1);
+    const day=(m[r.campo][r.o]=m[r.campo][r.o]||{h,d:[[],[],[],[],[],[],[]]}).d[r.g-1];
+    day.push([r.n,r.c,r.d,r.f]);
+    let x=mem.get(r.k);if(!x){x={n:r.n,c:r.c,s:{Centrale:[],Benevelli:[]}};mem.set(r.k,x)}
+    x.s[r.campo].push([r.g,r.o]);
+  }
+  const grid=c=>Object.keys(m[c]).map(Number).sort((a,b)=>a-b).map(o=>{const r=m[c][o];r.d.forEach(a=>a.sort((p,q)=>p[0].localeCompare(q[0])));return r});
+  const txt=a=>a.sort((p,q)=>p[0]-q[0]||p[1]-q[1]).map(([g,o])=>DAYS[g-1]+" "+o+"-"+(o+1)).join(" ; ");
+  const cert=[...mem.values()].map(x=>({n:x.n,s:x.c,c:txt(x.s.Centrale),b:txt(x.s.Benevelli)}));
+  return{centrale:grid("Centrale"),benevelli:grid("Benevelli"),cert};
+}
+function mapRows(a){
+  return (a||[]).filter(r=>r&&(r.campo==="Centrale"||r.campo==="Benevelli")&&Number.isInteger(r.giorno)&&r.giorno>=1&&r.giorno<=7&&Number.isInteger(r.ora)).map(r=>({
+    k:String(r.socio_id),campo:r.campo,g:r.giorno,o:r.ora,n:(String(r.cognome||"").trim()+" "+String(r.nome||"").trim()).trim(),c:dv(r.scadenza_cert),d:dv(r.rinnovo_dlf),f:dv(r.scadenza_fitp)}));
+}
+
+/* ---- rendering ---- */
+let query="",showX=false,filter=null;
+function mChip(s){
+  const x=st(s);
+  if(x.k==="mis")return'<span class="chip s-mis">M mancante</span>';
+  if(x.k==="neu")return'<span class="chip s-neu" title="Certificato senza scadenza">M senza scadenza</span>';
+  const t=x.d<0?"scaduto":x.d<=5?x.d+" gg":"";
+  return'<span class="chip s-'+x.k+'" title="Certificato medico: '+x.l+'">M '+fd(s)+(t?" · "+t:"")+'</span>';
+}
+function xChips(d,f){
+  let h=d?'<span class="chip mut" title="Rinnovo tessera DLF">D '+fd(d)+'</span>':'<span class="chip mut" title="Tessera DLF">D non trovata</span>';
+  if(f)h+='<span class="chip mut" title="Scadenza tessera FITP">F '+fd(f)+'</span>';
+  return h;
+}
+function renderCampo(key){
+  const rws=model[key],q=norm(query.trim());
+  const head='<thead><tr><th class="hr">Ora</th>'+DAYS.map((d,i)=>'<th class="'+(i===todayIdx?"today":"")+'">'+d+(i===todayIdx?"<small>oggi</small>":"")+'</th>').join("")+'</tr></thead>';
+  const body=rws.map(r=>'<tr><th class="hr" scope="row">'+r.h+'</th>'+r.d.map((c,i)=>{
+    const cls=i===todayIdx?"today":"";
+    if(!c.length)return'<td class="'+cls+'"><div class="empty">·</div></td>';
+    return'<td class="'+cls+'">'+c.map(m=>{
+      const hit=q&&norm(m[0]).includes(q),c2=q?(hit?" hit":" dim"):"";
+      return'<div class="m'+c2+'"><div class="nm">'+esc(m[0])+'</div><div class="chips">'+mChip(m[1])+(showX?xChips(m[2],m[3]):"")+'</div></div>';
+    }).join("")+'</td>';
+  }).join("")+'</tr>').join("");
+  const tot=new Set(rws.flatMap(r=>r.d.flatMap(c=>c.map(m=>m[0])))).size;
+  const leg='<div class="legend"><span>Certificato medico (M):</span>'+KEYS.filter(([k])=>["red","org","amb","blu","grn"].includes(k)).map(([k,l])=>'<span class="chip s-'+k+'">'+l+'</span>').join("")+'<span style="margin-left:auto">'+tot+' soci con almeno una fascia</span></div>';
+  $("#p-"+key).innerHTML=leg+(rws.length?'<div class="scroll"><table class="grid">'+head+'<tbody>'+body+'</tbody></table></div>':'<div class="scroll"><div class="none">Nessuna fascia presente.</div></div>');
+}
+function renderCert(){
+  const list=model.cert.map(c=>({n:c.n,s:c.s,c:c.c,b:c.b,x:st(c.s)}));
+  list.sort((a,b)=>(a.x.o===-1)!==(b.x.o===-1)?(a.x.o===-1?-1:1):(a.s||"")<(b.s||"")?-1:(a.s||"")>(b.s||"")?1:a.n.localeCompare(b.n));
+  const cnt={};KEYS.forEach(([k])=>cnt[k]=0);list.forEach(r=>cnt[r.x.k]++);
+  const q=norm(query.trim());
+  const vis=list.filter(r=>(!filter||r.x.k===filter)&&(!q||norm(r.n).includes(q)));
+  const cards=KEYS.filter(([k])=>cnt[k]>0).map(([k,l])=>'<button class="card" data-f="'+k+'" aria-pressed="'+(filter===k)+'"><span class="k">'+l+'</span><span class="v">'+cnt[k]+'</span><span class="tag s-'+k+'">'+TAGS[k]+'</span></button>').join("");
+  const trs=vis.map((r,i)=>'<tr><td class="idx">'+(i+1)+'</td><td class="nm">'+esc(r.n)+'</td><td class="s-'+r.x.k+'">'+(r.x.d===null?"—":fdl(r.s))+'</td><td class="num">'+(r.x.d===null?"—":r.x.d)+'</td><td><span class="pill s-'+r.x.k+'">'+r.x.l+'</span></td><td class="slot">'+esc(r.c||"—")+'</td><td class="slot">'+esc(r.b||"—")+'</td></tr>').join("");
+  $("#p-certificati").innerHTML='<div class="cards">'+cards+'</div><div class="scroll"><table class="cert"><thead><tr><th>#</th><th>Socio</th><th>Scadenza</th><th class="num">Giorni</th><th>Stato</th><th>Slot Centrale</th><th>Slot Benevelli</th></tr></thead><tbody>'+trs+'</tbody></table>'+(trs?"":'<div class="none">Nessun socio corrisponde ai filtri.</div>')+'</div>';
+  $("#ncert").textContent=list.length;
+  document.querySelectorAll("#p-certificati .card").forEach(b=>b.onclick=()=>{filter=filter===b.dataset.f?null:b.dataset.f;renderCert()});
+}
+function renderAll(){
+  setToday();model=build(rows);
+  renderCampo("Centrale".toLowerCase());renderCampo("benevelli");renderCert();
+  $("#sub").textContent="Orario campi invernale 2026/2027 e scadenze dei certificati medici · oggi "+today.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+function show(t){
+  document.querySelectorAll("[role=tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));
+  document.querySelectorAll("[role=tabpanel]").forEach(p=>p.hidden=p.id!=="p-"+t);
+  $("#xwrap").hidden=t==="certificati";
+  if(location.hash!=="#"+t)history.replaceState(null,"","#"+t);
+}
+document.querySelectorAll("[role=tab]").forEach(b=>b.onclick=()=>show(b.dataset.t));
+$("#q").oninput=e=>{query=e.target.value;renderAll()};
+$("#xt").onchange=e=>{showX=e.target.checked;renderAll()};
+window.addEventListener("hashchange",()=>{const t=location.hash.slice(1);if(["centrale","benevelli","certificati"].includes(t))show(t)});
+
+/* ---- database Supabase: accesso con utente di sola consultazione ---- */
+const SUPABASE_URL="https://pojdkxrbbawtsridrzxh.supabase.co";
+const SUPABASE_KEY="sb_publishable_EebOC02Vd1ij28XRESKWtA_ju9yVSuE";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let lastOk=null,busy=false,timer=null,loggato=false;
+const hhmm=d=>d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+function status(cls,msg,btn){
+  const el=$("#st");el.className="st "+cls;
+  el.innerHTML='<span class="dot"></span><span>'+esc(msg)+'</span>'+(btn?'<button id="rf" type="button">'+btn+'</button>':"");
+  const b=$("#rf");if(b)b.onclick=()=>carica();
+}
+async function carica(){
+  if(busy)return;busy=true;
+  if(!lastOk)status("wait","Caricamento dal database…");
+  try{
+    const {data,error}=await sb.from("vista_tennis").select("socio_id,cognome,nome,scadenza_cert,rinnovo_dlf,scadenza_fitp,campo,giorno,ora").order("cognome").limit(5000);
+    if(error)throw error;
+    rows=mapRows(data);lastOk=new Date();renderAll();
+    status("ok","Collegato al database · aggiornato alle "+hhmm(lastOk)+" · si aggiorna ogni minuto","Aggiorna");
+  }catch(e){
+    status(lastOk?"warn":"off",lastOk?"Database non raggiungibile ora. Dati delle ore "+hhmm(lastOk)+".":"Impossibile leggere i dati dal database.","Riprova");
+  }
+  busy=false;
+}
+async function mostra(sessione){
+  if(!!sessione===loggato)return;
+  loggato=!!sessione;
+  $("#login").classList.toggle("hide",loggato);
+  $("#app").classList.toggle("hide",!loggato);
+  clearInterval(timer);
+  if(loggato){
+    const h=location.hash.slice(1);show(["centrale","benevelli","certificati"].includes(h)?h:"centrale");
+    await carica();
+    timer=setInterval(()=>{if(!document.hidden)carica()},60000);
+  }else{rows=[];lastOk=null;renderAll()}
+}
+document.addEventListener("visibilitychange",()=>{if(loggato&&!document.hidden&&(!lastOk||Date.now()-lastOk>30000))carica()});
+$("#entra").onclick=async()=>{
+  $("#loginErr").textContent="";
+  const {error}=await sb.auth.signInWithPassword({email:$("#u").value.trim(),password:$("#p").value});
+  if(error){$("#loginErr").textContent="Accesso non riuscito: email o password non corretta.";return}
+  $("#p").value="";
+};
+$("#p").onkeydown=e=>{if(e.key==="Enter")$("#entra").click()};
+$("#esci").onclick=()=>sb.auth.signOut();
+sb.auth.onAuthStateChange((_ev,s)=>mostra(s));
+sb.auth.getSession().then(({data})=>mostra(data.session));
+renderAll();
+</script>
+
+</body>
+</html>
